@@ -1,3 +1,4 @@
+import inspect
 import json
 import os
 import sys
@@ -5,12 +6,49 @@ import openai
 from dotenv import load_dotenv
 import asyncio
 import logging
+from typing import Any, Callable
 
 logging.getLogger("openai").setLevel(logging.INFO)
 
 # Import Monarch MCP components
 from monarch_mcp.client import MonarchClient
-from monarch_mcp.tools import ALL_TOOLS, API_CLASS_MAP
+from monarch_mcp.server import mcp
+from monarch_mcp.tools import (
+    ChemicalApi,
+    DiseaseApi,
+    EntityApi,
+    GeneApi,
+    HistoPhenoApi,
+    MappingApi,
+    PhenotypeApi,
+    ProteinApi,
+    SearchApi,
+    SimilarityApi,
+    VariantApi,
+)
+
+_API_INSTANCES = (
+    EntityApi(),
+    DiseaseApi(),
+    GeneApi(),
+    PhenotypeApi(),
+    SimilarityApi(),
+    SearchApi(),
+    HistoPhenoApi(),
+    MappingApi(),
+    ChemicalApi(),
+    VariantApi(),
+    ProteinApi(),
+)
+
+TOOL_DISPATCH: dict[str, Callable[..., Any]] = {}
+for api in _API_INSTANCES:
+    for attr in dir(api):
+        if attr.startswith("_"):
+            continue
+        method = getattr(api, attr)
+        if inspect.iscoroutinefunction(method):
+            TOOL_DISPATCH[attr] = method
 
 async def main():
     load_dotenv()
@@ -24,15 +62,8 @@ async def main():
     api_client = MonarchClient()
     
     # Convert tools to JSON for the prompt
-    try:
-        tools_json_str = json.dumps([tool.model_dump() for tool in ALL_TOOLS], indent=2)
-    except AttributeError:
-        print("Warning: Could not use model_dump() on tool objects.")
-        tools_json_str = json.dumps([{
-            "name": tool.name,
-            "description": tool.description,
-            "inputSchema": tool.inputSchema
-        } for tool in ALL_TOOLS], indent=2)
+    tools = [tool.model_dump() for tool in mcp._tool_manager.list_tools()]
+    tools_json_str = json.dumps(tools, indent=2)
 
     system_prompt = f"""
 You are an expert clinical geneticist and bioinformatics assistant specializing in phenotype analysis, disease diagnosis, and cross-species modeling. Your goal is to answer the user's question by breaking it down into a series of steps using the Monarch Initiative tools.
@@ -108,42 +139,31 @@ The `Action` must be a single JSON object with one of two formats:
                         print(f"\n✅ Final Answer:\n{final_answer}")
                         break
                     
-                    if tool_name not in API_CLASS_MAP:
-                        print(f"Error: Tool '{tool_name}' is not mapped to an API class.")
+                    tool_callable = TOOL_DISPATCH.get(tool_name)
+                    if tool_callable is None:
+                        print(f"Error: Tool '{tool_name}' is not available.")
                         history.append({
                             "role": "user",
                             "content": f"Observation: Invalid tool name '{tool_name}'. Choose from available tools."
                         })
                         continue
 
-                    # Get API instance and call the tool
-                    api_class = API_CLASS_MAP[tool_name]
-                    api_instance = api_class()
+                    arguments = action.get("arguments", {})
+                    print(f"--- Step {i+1}: Action ---")
+                    print(f"Calling: {tool_name}({arguments})")
 
-                    if hasattr(api_instance, tool_name):
-                        arguments = action.get("arguments", {})
-                        print(f"--- Step {i+1}: Action ---")
-                        print(f"Calling: {tool_name}({arguments})")
-                        
-                        func = getattr(api_instance, tool_name)
-                        observation = await func(api_client, **arguments)
-                        
-                        # Format observation
-                        obs_str = json.dumps(observation, indent=2)
-                        
-                        # Truncate if too long
-                        if len(obs_str) > 2000:
-                            obs_str = obs_str[:2000] + "\n... (truncated)"
-                        
-                        history.append({"role": "user", "content": f"Observation:\n{obs_str}"})
-                        print(f"--- Step {i+1}: Observation ---")
-                        print(obs_str[:500] + "..." if len(obs_str) > 500 else obs_str)
-                    else:
-                        print(f"Error: Method '{tool_name}' not found in API class.")
-                        history.append({
-                            "role": "user",
-                            "content": f"Observation: Tool '{tool_name}' not found."
-                        })
+                    observation = await tool_callable(api_client, **arguments)
+
+                    # Format observation
+                    obs_str = json.dumps(observation, indent=2)
+
+                    # Truncate if too long
+                    if len(obs_str) > 2000:
+                        obs_str = obs_str[:2000] + "\n... (truncated)"
+
+                    history.append({"role": "user", "content": f"Observation:\n{obs_str}"})
+                    print(f"--- Step {i+1}: Observation ---")
+                    print(obs_str[:500] + "..." if len(obs_str) > 500 else obs_str)
 
                 except json.JSONDecodeError as e:
                     print(f"Error: Could not parse Action JSON. Error: {e}")
