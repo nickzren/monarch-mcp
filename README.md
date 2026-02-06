@@ -1,5 +1,10 @@
 # Monarch MCP Server
 
+[![CI](https://github.com/nickzren/monarch-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/nickzren/monarch-mcp/actions/workflows/ci.yml)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+[![FastMCP 2.14.5+ <3](https://img.shields.io/badge/FastMCP-2.14.5%2B%20%3C3-0b7285.svg)](https://pypi.org/project/fastmcp/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 A Model Context Protocol (MCP) server that exposes the Monarch Initiative API as a set of tools.
 
 ## Features
@@ -48,10 +53,23 @@ pip install mcpm
 ```
 
 ### 3. Setup the MCP Server
+
+Choose one install mode:
+
+Runtime only:
 ```bash
 cd monarch-mcp
 uv sync
 ```
+
+Runtime + development + examples:
+```bash
+cd monarch-mcp
+uv sync --extra dev --extra examples
+```
+
+By default, the server uses Monarch API `https://api.monarchinitiative.org/v3/api/`.
+Set `MONARCH_API_URL` only if you need a different endpoint.
 
 ### 4. Add the Server to Claude Desktop
 ```bash
@@ -90,15 +108,18 @@ When running with `--transport sse` or `--transport http`, the server exposes a 
 
 ```bash
 # Create .env file with your OpenAI API key
-echo "OPENAI_API_KEY=your_key_here" > .env
+cat <<EOF > .env
+OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=gpt-5-mini
+EOF
 
 # Run the example agent
-uv run python examples/react_agent.py
+uv run --extra examples python examples/react_agent.py
 ```
 
 #### Development
 
 ```bash
 # Run tests
-uv run pytest tests/ -v
+uv run --extra dev pytest tests/ -v
 ```

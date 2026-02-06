@@ -1,5 +1,4 @@
 from typing import Any, Dict, List, Optional
-import mcp.types as types
 from ..client import MonarchClient
 
 class MappingApi:
@@ -32,22 +31,3 @@ class MappingApi:
         }
         params = {k: v for k, v in params.items() if v is not None}
         return await client.get("mappings", params=params)
-
-MAPPING_TOOLS = [
-    types.Tool(
-        name="get_mappings",
-        description="Retrieve mappings (e.g., skos:exactMatch, skos:closeMatch) between entities from different namespaces.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "entity_id": {"type": "array", "items": {"type": "string"}, "description": "Entity CURIEs to retrieve mappings for."},
-                "subject_id": {"type": "array", "items": {"type": "string"}, "description": "Subject CURIEs to filter mappings."},
-                "predicate_id": {"type": "array", "items": {"type": "string"}, "description": "Predicate CURIEs (e.g., ['skos:exactMatch', 'skos:closeMatch', 'skos:broadMatch'])."},
-                "object_id": {"type": "array", "items": {"type": "string"}, "description": "Object CURIEs to filter mappings."},
-                "mapping_justification": {"type": "array", "items": {"type": "string"}, "description": "Mapping justifications to filter by."},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            }
-        }
-    )
-]

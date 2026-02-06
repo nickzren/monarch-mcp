@@ -52,7 +52,7 @@ for api in _API_INSTANCES:
 
 async def main():
     load_dotenv()
-    OPENAI_MODEL = os.getenv("OPENAI_MODEL")
+    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 
     if not os.getenv("OPENAI_API_KEY"):
         print("Error: OPENAI_API_KEY not found in .env file or environment.")
@@ -62,7 +62,7 @@ async def main():
     api_client = MonarchClient()
     
     # Convert tools to JSON for the prompt
-    tools = [tool.model_dump() for tool in mcp._tool_manager.list_tools()]
+    tools = [tool.to_mcp_tool().model_dump(mode="json") for tool in (await mcp.get_tools()).values()]
     tools_json_str = json.dumps(tools, indent=2)
 
     system_prompt = f"""

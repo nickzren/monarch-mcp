@@ -1,5 +1,4 @@
-from typing import Any, Dict, List
-import mcp.types as types
+from typing import Any, Dict
 from ..client import MonarchClient
 from .entity import EntityApi
 
@@ -91,71 +90,3 @@ class DiseaseApi:
             limit=limit,
             offset=offset
         )
-
-DISEASE_TOOLS = [
-    types.Tool(
-        name="get_disease_phenotype_associations",
-        description="Gets a table of phenotypes associated with a specific disease.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "disease_id": {"type": "string", "description": "Disease ID (e.g., MONDO:0005015)"},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            },
-            "required": ["disease_id"]
-        }
-    ),
-    types.Tool(
-        name="get_disease_gene_associations",
-        description="Gets a table of genes associated with a specific disease.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "disease_id": {"type": "string", "description": "Disease ID (e.g., MONDO:0005015)"},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            },
-            "required": ["disease_id"]
-        }
-    ),
-    types.Tool(
-        name="get_disease_treatments",
-        description="Get drugs or treatments for a specific disease.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "disease_id": {"type": "string", "description": "Disease ID (e.g., MONDO:0005015)"},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            },
-            "required": ["disease_id"]
-        }
-    ),
-    types.Tool(
-        name="get_disease_variants",
-        description="Get genetic variants associated with a specific disease.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "disease_id": {"type": "string", "description": "Disease ID (e.g., MONDO:0005015)"},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            },
-            "required": ["disease_id"]
-        }
-    ),
-    types.Tool(
-        name="get_disease_inheritance",
-        description="Get inheritance pattern (autosomal dominant, recessive, etc.) for a genetic disease.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "disease_id": {"type": "string", "description": "Disease ID (e.g., MONDO:0005015)"},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            },
-            "required": ["disease_id"]
-        }
-    )
-]

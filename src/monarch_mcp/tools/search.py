@@ -1,5 +1,4 @@
 from typing import Any, Dict, List, Optional
-import mcp.types as types
 from ..client import MonarchClient
 
 class SearchApi:
@@ -40,40 +39,3 @@ class SearchApi:
         Autocomplete for semantic similarity lookups.
         """
         return await client.get("semsim/autocomplete", params={"q": q})
-
-SEARCH_TOOLS = [
-    types.Tool(
-        name="search",
-        description="Search for entities (diseases, phenotypes, genes, etc.) by text query with optional filters.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "q": {"type": "string", "description": "Search query text", "default": "*:*"},
-                "category": {"type": "array", "items": {"type": "string"}, "description": "Filter by Biolink categories (e.g., ['biolink:Disease', 'biolink:Gene'])."},
-                "in_taxon_label": {"type": "array", "items": {"type": "string"}, "description": "Filter by taxon labels (e.g., ['Homo sapiens', 'Mus musculus'])."},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            }
-        }
-    ),
-    types.Tool(
-        name="autocomplete",
-        description="Get autocomplete suggestions for entity names based on partial query.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "q": {"type": "string", "description": "Partial search query for autocomplete", "default": "*:*"}
-            }
-        }
-    ),
-    types.Tool(
-        name="semsim_autocomplete",
-        description="Get autocomplete suggestions for semantic similarity lookups, prioritizing entities with direct phenotype associations.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "q": {"type": "string", "description": "Partial search query for autocomplete", "default": "*:*"}
-            }
-        }
-    )
-]

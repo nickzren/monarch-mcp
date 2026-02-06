@@ -1,5 +1,4 @@
-from typing import Any, Dict, List, Optional
-import mcp.types as types
+from typing import Any, Dict
 from ..client import MonarchClient
 from .entity import EntityApi
 
@@ -89,82 +88,3 @@ class ProteinApi:
             limit=limit,
             offset=offset
         )
-
-PROTEIN_TOOLS = [
-    types.Tool(
-        name="get_protein_info",
-        description="Get detailed information about a protein.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "protein_id": {"type": "string", "description": "Protein ID (e.g., UniProtKB:P04637)"}
-            },
-            "required": ["protein_id"]
-        }
-    ),
-    types.Tool(
-        name="get_protein_interactions",
-        description="Get protein-protein interactions for a specific protein.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "protein_id": {"type": "string", "description": "Protein ID (e.g., UniProtKB:P04637)"},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            },
-            "required": ["protein_id"]
-        }
-    ),
-    types.Tool(
-        name="get_protein_functions",
-        description="Get molecular functions (activities) enabled by a protein.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "protein_id": {"type": "string", "description": "Protein ID (e.g., UniProtKB:P04637)"},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            },
-            "required": ["protein_id"]
-        }
-    ),
-    types.Tool(
-        name="get_protein_processes",
-        description="Get biological processes that a protein is involved in.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "protein_id": {"type": "string", "description": "Protein ID (e.g., UniProtKB:P04637)"},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            },
-            "required": ["protein_id"]
-        }
-    ),
-    types.Tool(
-        name="get_protein_locations",
-        description="Get cellular components where a protein is located or active.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "protein_id": {"type": "string", "description": "Protein ID (e.g., UniProtKB:P04637)"},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            },
-            "required": ["protein_id"]
-        }
-    ),
-    types.Tool(
-        name="get_proteins_by_function",
-        description="Get proteins that enable a specific molecular function.",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "molecular_activity_id": {"type": "string", "description": "Molecular activity/function ID (e.g., GO:0003674)"},
-                "limit": {"type": "number", "description": "Number of results per page.", "default": 20},
-                "offset": {"type": "number", "description": "Offset for pagination.", "default": 0}
-            },
-            "required": ["molecular_activity_id"]
-        }
-    )
-]

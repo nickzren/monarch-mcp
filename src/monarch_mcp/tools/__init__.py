@@ -29,25 +29,3 @@ __all__ = [
     "SimilarityApi",
     "VariantApi",
 ]
-
-
-def __getattr__(name: str):
-    if name == "ALL_TOOLS":
-        import warnings
-
-        warnings.warn(
-            "ALL_TOOLS is deprecated in v0.2.0. Tools are now managed by FastMCP.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return []
-    if name == "API_CLASS_MAP":
-        import warnings
-
-        warnings.warn(
-            "API_CLASS_MAP is deprecated in v0.2.0. FastMCP handles tool dispatch.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return {}
-    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

@@ -10,11 +10,10 @@ from contextlib import asynccontextmanager
 from typing import Any, Callable, Optional
 
 from dotenv import load_dotenv
-from fastmcp import FastMCP
+from fastmcp import FastMCP, settings as fastmcp_settings
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 import mcp.types as mcp_types
-from mcp.server.lowlevel.server import NotificationOptions
 
 from . import __version__ as package_version
 from .client import MonarchClient
@@ -97,6 +96,7 @@ _mapping_api = MappingApi()
 _chemical_api = ChemicalApi()
 _variant_api = VariantApi()
 _protein_api = ProteinApi()
+_registered_tool_names: set[str] = set()
 
 
 def _make_tool_wrapper(method: Callable[..., Any]) -> Callable[..., Any]:
@@ -136,11 +136,12 @@ def register_all_api_methods() -> None:
             method = getattr(api, name)
             if not inspect.iscoroutinefunction(method):
                 continue
-            if name in getattr(mcp._tool_manager, "_tools", {}):
+            if name in _registered_tool_names:
                 logger.debug("Tool already registered: %s", name)
                 continue
             wrapper = _make_tool_wrapper(method)
             mcp.tool(name=name)(wrapper)
+            _registered_tool_names.add(name)
             logger.debug("Registered tool: %s", name)
 
 
@@ -148,24 +149,15 @@ register_all_api_methods()
 
 
 # ---------------------------------------------------------------------------
-# Deprecated module-level guidance
-# ---------------------------------------------------------------------------
-
-def __getattr__(name: str) -> Any:  # pragma: no cover - guidance only
-    if name == "ALL_TOOLS":
-        raise AttributeError(
-            "ALL_TOOLS has been removed in v0.2.0. Use FastMCP list_tools instead."
-        )
-    if name == "API_CLASS_MAP":
-        raise AttributeError(
-            "API_CLASS_MAP has been removed in v0.2.0. Tool dispatch is handled by FastMCP."
-        )
-    raise AttributeError(name)
-
-
-# ---------------------------------------------------------------------------
 # Discovery endpoint for HTTP/SSE transports
 # ---------------------------------------------------------------------------
+
+
+def _discovery_capabilities() -> dict[str, Any]:
+    capabilities = mcp_types.ServerCapabilities(
+        tools=mcp_types.ToolsCapability(listChanged=False),
+    )
+    return capabilities.model_dump(mode="json", exclude_none=True)
 
 
 @mcp.custom_route("/.well-known/mcp.json", methods=["GET"], include_in_schema=False)
@@ -173,14 +165,9 @@ async def discovery_endpoint(request: Request) -> JSONResponse:
     """Expose MCP discovery metadata for HTTP/SSE clients."""
 
     base_url = str(request.base_url).rstrip("/")
-    sse_path = mcp._deprecated_settings.sse_path.lstrip("/")
-    message_path = mcp._deprecated_settings.message_path.lstrip("/")
-    http_path = mcp._deprecated_settings.streamable_http_path.lstrip("/")
-
-    capabilities = mcp._mcp_server.get_capabilities(
-        NotificationOptions(),
-        experimental_capabilities={}
-    )
+    sse_path = fastmcp_settings.sse_path.lstrip("/")
+    message_path = fastmcp_settings.message_path.lstrip("/")
+    http_path = fastmcp_settings.streamable_http_path.lstrip("/")
 
     transports: dict[str, dict[str, str]] = {
         "sse": {
@@ -196,11 +183,11 @@ async def discovery_endpoint(request: Request) -> JSONResponse:
     discovery = {
         "protocolVersion": mcp_types.LATEST_PROTOCOL_VERSION,
         "server": {
-            "name": mcp._mcp_server.name,
-            "version": mcp._mcp_server.version,
-            "instructions": mcp._mcp_server.instructions,
+            "name": mcp.name,
+            "version": mcp.version,
+            "instructions": mcp.instructions,
         },
-        "capabilities": capabilities.model_dump(mode="json"),
+        "capabilities": _discovery_capabilities(),
         "transports": transports,
     }
 
@@ -214,7 +201,7 @@ async def root_health(_: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
-@mcp.custom_route(mcp._deprecated_settings.sse_path, methods=["POST"], include_in_schema=False)
+@mcp.custom_route(fastmcp_settings.sse_path, methods=["POST"], include_in_schema=False)
 async def sse_message_fallback(_: Request) -> Response:
     """Gracefully handle clients that POST to the SSE endpoint."""
 
@@ -240,13 +227,13 @@ def main() -> None:
     parser.add_argument(
         "--host",
         default=os.getenv("FASTMCP_SERVER_HOST", "0.0.0.0"),
-        help="Host for SSE transport (default: 0.0.0.0)",
+        help="Host for HTTP/SSE transports (default: 0.0.0.0)",
     )
     parser.add_argument(
         "--port",
         type=int,
         default=int(os.getenv("FASTMCP_SERVER_PORT", "8000")),
-        help="Port for SSE transport (default: 8000)",
+        help="Port for HTTP/SSE transports (default: 8000)",
     )
     parser.add_argument(
         "--verbose",
@@ -260,11 +247,6 @@ def main() -> None:
         logging.getLogger().setLevel(logging.DEBUG)
 
     if args.transport in {"sse", "http"}:
-        os.environ["FASTMCP_SERVER_HOST"] = args.host
-        os.environ["FASTMCP_SERVER_PORT"] = str(args.port)
-        if hasattr(mcp, "settings"):
-            mcp.settings.host = args.host  # type: ignore[attr-defined]
-            mcp.settings.port = args.port  # type: ignore[attr-defined]
         logger.info("Configured %s host=%s port=%s", args.transport.upper(), args.host, args.port)
 
     logger.info(
@@ -275,13 +257,20 @@ def main() -> None:
     )
 
     try:
-        if args.transport == "http":
+        if args.transport in {"sse", "http"}:
             async def run_http() -> None:
-                await mcp.run_http_async(host=args.host, port=args.port)
+                await mcp.run_http_async(
+                    transport=args.transport,
+                    host=args.host,
+                    port=args.port,
+                )
 
             anyio.run(run_http)
         else:
-            mcp.run(transport=args.transport)
+            async def run_stdio() -> None:
+                await mcp.run_stdio_async()
+
+            anyio.run(run_stdio)
     except KeyboardInterrupt:  # pragma: no cover - user interaction
         logger.info("Server interrupted by user")
     except Exception:  # pragma: no cover - unexpected runtime failure
