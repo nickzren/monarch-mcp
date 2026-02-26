@@ -62,7 +62,9 @@ async def main():
     api_client = MonarchClient()
     
     # Convert tools to JSON for the prompt
-    tools = [tool.to_mcp_tool().model_dump(mode="json") for tool in (await mcp.get_tools()).values()]
+    tool_registry = await mcp.list_tools()
+    iter_tools = tool_registry.values() if isinstance(tool_registry, dict) else tool_registry
+    tools = [tool.to_mcp_tool().model_dump(mode="json") for tool in iter_tools]
     tools_json_str = json.dumps(tools, indent=2)
 
     system_prompt = f"""
